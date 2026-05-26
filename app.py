@@ -157,7 +157,41 @@ def delete_item(item_id):
         
     conn.close()
     return redirect(url_for('dashboard'))
-
+# 4. UPDATE: Koleksiyondaki Ögeyi Güncelleme [US3]
+@app.route('/edit_item/<int:item_id>', methods=['GET', 'POST'])
+def edit_item(item_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    conn = get_db_connection()
+    
+    # Güvenlik Kontrolü: Güncellenmek istenen öge bu kullanıcıya mı ait?
+    item = conn.execute('SELECT * FROM collections WHERE id = ? AND user_id = ?', (item_id, session['user_id'])).fetchone()
+    
+    if not item:
+        conn.close()
+        flash('Öge bulunamadı veya yetkisiz işlem!', 'danger')
+        return redirect(url_for('dashboard'))
+        
+    if request.method == 'POST':
+        title = request.form['title'].strip()
+        author_director = request.form['author_director'].strip()
+        rating = int(request.form['rating'])
+        status = request.form['status']
+        
+        conn.execute('''
+            UPDATE collections 
+            SET title = ?, author_director = ?, rating = ?, status = ?
+            WHERE id = ?
+        ''', (title, author_director, rating, status, item_id))
+        conn.commit()
+        conn.close()
+        
+        flash(f'"{title}" başarıyla güncellendi! [US3]', 'success')
+        return redirect(url_for('dashboard'))
+        
+    conn.close()
+    return render_template('edit.html', item=item)
 
 # --- UYGULAMAYI BAŞLATAN ANA KAPILAR ---
 if __name__ == '__main__':
